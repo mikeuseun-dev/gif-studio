@@ -41,14 +41,58 @@ video.addEventListener('loadedmetadata',()=>{
  $('start').value='0';$('end').value=Math.min(4,video.duration).toFixed(1);
  $('convert').disabled=false;$('status').textContent='구간을 선택하고 GIF 만들기를 누르세요.';
 });
-function seek(t){return new Promise((resolve,reject)=>{
- const timer=setTimeout(()=>{cleanup();reject(new Error('영상 위치 이동 시간이 초과되었습니다.'))},12000);
- function cleanup(){clearTimeout(timer);video.removeEventListener('seeked',done);video.removeEventListener('error',fail)}
- function done(){cleanup();resolve()}
- function fail(){cleanup();reject(new Error('영상을 읽을 수 없습니다.'))}
- video.addEventListener('seeked',done,{once:true});video.addEventListener('error',fail,{once:true});
- video.currentTime=Math.min(Math.max(t,0),Math.max(0,video.duration-0.001));
- })}
+
+function seek(t) {
+  return new Promise((resolve, reject) => {
+    const target = Math.min(
+      Math.max(t, 0),
+      Math.max(0, video.duration - 0.001)
+    );
+
+    let timer;
+    let settled = false;
+
+    function cleanup() {
+      clearTimeout(timer);
+      video.removeEventListener('seeked', done);
+      video.removeEventListener('error', fail);
+    }
+
+    function done() {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    }
+
+    function fail() {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('영상을 읽을 수 없습니다.'));
+    }
+
+    video.addEventListener('seeked', done);
+    video.addEventListener('error', fail);
+
+    timer = setTimeout(() => {
+      fail();
+    }, 20000);
+
+    try {
+      if (!video.seeking &&
+          Math.abs(video.currentTime - target) < 0.001 &&
+          video.readyState >= 2) {
+        done();
+      } else {
+        video.currentTime = target;
+      }
+    } catch (e) {
+      fail();
+    }
+  });
+}
+
 function encode(frames,w,h,delay,quality){return new Promise((resolve,reject)=>{
  const gif=new GIF({workers:2,quality,workerScript:'./gif.worker.js'});
  frames.forEach(c=>gif.addFrame(c,{copy:true,delay}));
