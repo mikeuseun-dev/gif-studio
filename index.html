@@ -50,7 +50,7 @@ function seek(t){return new Promise((resolve,reject)=>{
  video.currentTime=Math.min(Math.max(t,0),Math.max(0,video.duration-0.001));
  })}
 function encode(frames,w,h,delay,quality){return new Promise((resolve,reject)=>{
- const gif=new GIF({workers:2,quality,workerScript:'./gif.worker.js'
+ const gif=new GIF({workers:2,quality,workerScript:'./gif.worker.js'});
  frames.forEach(c=>gif.addFrame(c,{copy:true,delay}));
  gif.on('finished',resolve);gif.on('abort',()=>reject(new Error('인코딩이 중단되었습니다.')));
  gif.on('progress',p=>{$('progress').value=55+Math.round(p*45)});
